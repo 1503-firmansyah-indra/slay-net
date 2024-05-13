@@ -6,7 +6,6 @@ import json
 import os
 
 import numpy as np
-from PIL import Image
 
 from loguru import logger
 import torch
