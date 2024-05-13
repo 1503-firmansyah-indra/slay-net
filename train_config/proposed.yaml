@@ -24,8 +24,7 @@ smooth_ap:
   sigmoid_temperature: 0.01
   similarity_measure: affinity_matrix
 combined_loss:
-  weight_triplet: 0.8
-  weight_smoothap: 0
+  weight_contrastive: 0.8
   weight_comp: 0.2
 set_pooling:
   set_hidden_dim: 256
