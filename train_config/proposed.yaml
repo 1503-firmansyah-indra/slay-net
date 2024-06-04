@@ -16,7 +16,7 @@ model:
   dim_embed_img: 64
   set_encoder_type: SAB
   set_pooling_type: PSWE
-  csn_num_conditions: 5
+  csa_num_conditions: 5
 triplet_loss:
   loss_margin: 0.3
   negative_aggregate: mean

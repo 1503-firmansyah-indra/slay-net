@@ -1,4 +1,5 @@
-# Sliced-Wasserstein Fashion Compatibility Network (Slay-Net) 
+# Slay-Net : Sliced-Wasserstein Fashion Compatibility Network 
+The master thesis report is available for download [here](https://drive.google.com/uc?export=view&id=1ebi9lRB-oy2W5zTkF-MNlVpTy8g5Jf8E)
 
 # Note
 This repo is still work-in-progress

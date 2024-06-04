@@ -11,12 +11,13 @@ from torchmetrics import AUROC
 
 from train_utils import CheckpointManager
 from metrics import calculate_fitb, calculate_compatibility_auc
-from models import FashRecco
+from models import SlayNetImageOnly
 from polyvore_outfits_set import OutfitSetLoader, triple_loss_set_collation
 
-class SetWiseRankingLoss(torch.nn.Module):
+
+class SetWiseOutfitRankingLoss(torch.nn.Module):
     def __init__(self, loss_margin, negative_aggregation, num_negative_sample, device):
-        super(SetWiseRankingLoss, self).__init__()
+        super(SetWiseOutfitRankingLoss, self).__init__()
         self.num_negative_sample = num_negative_sample
         self.margin_ranking_loss = nn.MarginRankingLoss(margin=loss_margin)
         if negative_aggregation == 'mean':
@@ -43,9 +44,9 @@ class SetWiseRankingLoss(torch.nn.Module):
         return self.margin_ranking_loss(D_p, D_n, torch.full(D_p.shape, -1, device=self.device))
 
 
-class SetWiseRankingLossHard(SetWiseRankingLoss):
+class SetWiseOutfitRankingLossDifficult(SetWiseOutfitRankingLoss):
     def __init__(self, loss_margin, negative_aggregation, num_negative_sample, device):
-        super(SetWiseRankingLossHard, self).__init__(
+        super(SetWiseOutfitRankingLossDifficult, self).__init__(
             loss_margin, negative_aggregation, num_negative_sample, device)
 
     def forward(self, anchor, positives, negatives):
@@ -92,7 +93,7 @@ def calculate_metrics_and_print(args, model, dataset, metric_batch, development_
     return True
 
 
-def train_combined_losses(args: argparse.Namespace, model: FashRecco,
+def train_combined_losses(args: argparse.Namespace, model: SlayNetImageOnly,
                           contrastive_dataset: OutfitSetLoader, comp_dataset: OutfitSetLoader,
                           epoch_num: int, valid_dataset: OutfitSetLoader,
                           valid_metric_batch: int = 128, development_test: bool = False, print_interval: int = 200):
@@ -141,11 +142,11 @@ def train_combined_losses(args: argparse.Namespace, model: FashRecco,
     bce_loss_calculator = nn.BCEWithLogitsLoss()
     if args.triplet_add_minimum:
         logger.info("Triplet loss variant: aggregate and minimum")
-        triplet_loss_calculator = SetWiseRankingLossHard(
+        triplet_loss_calculator = SetWiseOutfitRankingLossDifficult(
             triplet_loss_margin, triplet_negative_aggregate, num_negative_sample, input_device)
     else:
         logger.info("Triplet loss variant: aggregate only")
-        triplet_loss_calculator = SetWiseRankingLoss(
+        triplet_loss_calculator = SetWiseOutfitRankingLoss(
             triplet_loss_margin, triplet_negative_aggregate, num_negative_sample, input_device)
     if sys.platform != 'win32':
         triplet_loss_calculator = torch.compile(triplet_loss_calculator)
@@ -282,7 +283,7 @@ def train_combined_losses(args: argparse.Namespace, model: FashRecco,
     return True
 
 
-def train_contrastive(args: argparse.Namespace, model: FashRecco, dataset: OutfitSetLoader, epoch_num: int,
+def train_contrastive(args: argparse.Namespace, model: SlayNetImageOnly, dataset: OutfitSetLoader, epoch_num: int,
                       valid_dataset: OutfitSetLoader,
                       valid_metric_batch: int = 128, development_test: bool = False, print_interval: int = 200):
     # general hyper params
@@ -307,11 +308,11 @@ def train_contrastive(args: argparse.Namespace, model: FashRecco, dataset: Outfi
 
     if args.triplet_add_minimum:
         logger.info("Triplet loss variant: aggregate and minimum")
-        triplet_loss_calculator = SetWiseRankingLossHard(
+        triplet_loss_calculator = SetWiseOutfitRankingLossDifficult(
             triplet_loss_margin, triplet_negative_aggregate, num_negative_sample, input_device)
     else:
         logger.info("Triplet loss variant: aggregate only")
-        triplet_loss_calculator = SetWiseRankingLoss(
+        triplet_loss_calculator = SetWiseOutfitRankingLoss(
             triplet_loss_margin, triplet_negative_aggregate, num_negative_sample, input_device)
     if sys.platform != 'win32':
         triplet_loss_calculator = torch.compile(triplet_loss_calculator)
@@ -393,7 +394,7 @@ def train_contrastive(args: argparse.Namespace, model: FashRecco, dataset: Outfi
     return True
 
 
-def train_compatibility(args: argparse.Namespace, model: FashRecco, dataset: OutfitSetLoader, epoch_num: int,
+def train_compatibility(args: argparse.Namespace, model: SlayNetImageOnly, dataset: OutfitSetLoader, epoch_num: int,
                         valid_dataset: OutfitSetLoader,
                         valid_metric_batch: int = 128, development_test: bool = False, print_interval: int = 200):
     learning_rate = args.lr

@@ -225,7 +225,7 @@ class OutfitSetLoader(torch.utils.data.Dataset):
         elif self.neg_sampling_strategy == 'contrastive':
             self.sample_negative_finegrained(outfit_id, item_id, item_type)
         else:
-            raise
+            raise Exception('Invalid negative sampling strategy')
 
     def sample_negative_general(self, outfit_id, item_id, item_type):
         """ Returns a randomly sampled item from a different set
