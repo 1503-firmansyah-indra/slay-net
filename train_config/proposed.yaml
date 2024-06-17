@@ -3,6 +3,7 @@ data:
   item_metadata_path: ../data/polyvore_outfits/polyvore_item_metadata.json
   fclip_embeddings_path: ../data/polyvore_outfits/images_fclip.npy
   fclip_images_mapping_path: ../data/polyvore_outfits/images_name.txt
+  txt_embeddings_path: ../data/polyvore_outfits/text_sentence_bert.npy
   item_types_path: ../data/polyvore_outfits/nondisjoint/item_types.json
   contrastive_learning_data_path: ../data/polyvore_outfits/nondisjoint/set_based_train_full.json
   data_root_dir: ../data/polyvore_outfits/nondisjoint/
@@ -11,18 +12,15 @@ training:
   learning_type: combined
   negative_sample_size: 10
   lr: 5e-5
+  finegrain_sampling: 0
 model:
-  backbone_type: fashionclip
   dim_embed_img: 64
-  set_encoder_type: SAB
+  set_encoder_type: SABS
   set_pooling_type: PSWE
   csa_num_conditions: 5
 triplet_loss:
   loss_margin: 0.3
   negative_aggregate: mean
-smooth_ap:
-  sigmoid_temperature: 0.01
-  similarity_measure: affinity_matrix
 combined_loss:
   weight_contrastive: 0.8
   weight_comp: 0.2

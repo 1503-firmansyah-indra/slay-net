@@ -12,7 +12,7 @@ from torchmetrics import AUROC
 from train_utils import CheckpointManager
 from metrics import calculate_fitb, calculate_compatibility_auc
 from models import SlayNetImageOnly
-from polyvore_outfits_set import OutfitSetLoader, triple_loss_set_collation
+from polyvore_outfits_set import OutfitSetLoader
 
 
 class SetWiseOutfitRankingLoss(torch.nn.Module):
@@ -378,7 +378,7 @@ def train_contrastive(args: argparse.Namespace, model: SlayNetImageOnly, dataset
                 break
         # saving the model checkpoint
         checkpoint_path = this_checkpoint_manager.generate_name(
-            'triple_loss', checkpoint_dir, e, instance_count
+            'contrastive', checkpoint_dir, e, instance_count
         )
         torch.save(model.state_dict(), checkpoint_path)
         logger.info(f"A checkpoint has just saved in '{checkpoint_path}'")

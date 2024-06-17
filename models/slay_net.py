@@ -151,9 +151,6 @@ class SlayNetImageOnly(nn.Module):
             self,
             args: argparse.Namespace,
             number_of_types: int = 11,
-            set_encoder_type: str = 'SABS',
-            set_pooling_type: str = 'PSWE',
-            csa_num_conditions: int = 5,
             raw_img_embedding_dim: int = 512
     ):
         super(SlayNetImageOnly, self).__init__()
@@ -182,20 +179,20 @@ class SlayNetImageOnly(nn.Module):
 
         self.text_encoder_block = None
 
-        assert set_encoder_type in ['SABS', 'MLP', 'SABL']
+        assert args.set_encoder_type in ['SABS', 'MLP', 'SABL']
         self.set_hidden_dim = args.set_hidden_dim
-        if set_encoder_type == 'SABS':
+        if args.set_encoder_type == 'SABS':
             logger.info('set encoder: SABS')
             self.set_encoder = SetEncoderSAB(
                 self.embedding_size + self.type_onehot_dim,
                 self.set_hidden_dim)
-        elif set_encoder_type == 'SABL':
+        elif args.set_encoder_type == 'SABL':
             logger.info('set encoder: SABL')
             self.set_encoder = SetEncoderSABLarge(
                 self.embedding_size + self.type_onehot_dim,
                 self.set_hidden_dim
             )
-        elif set_encoder_type == 'MLP':
+        elif args.set_encoder_type == 'MLP':
             logger.info('set encoder: MLP')
             self.set_encoder = nn.Sequential(
                 nn.Linear(self.embedding_size + self.type_onehot_dim, 128),
@@ -203,20 +200,20 @@ class SlayNetImageOnly(nn.Module):
                 nn.Linear(128, self.set_hidden_dim)
             )
         else:
-            raise Exception("Invalid argument 'set_encoder'")
+            raise Exception("Invalid argument 'set_encoder_type'")
 
-        assert set_pooling_type in ['PMA', 'PSWE', 'FSPool']
-        if set_pooling_type == 'PMA':
+        assert args.set_pooling_type in ['PMA', 'PSWE', 'FSPool']
+        if args.set_pooling_type == 'PMA':
             logger.info('set pooling: PMA')
             self.set_pooling = PoolingPMA(self.set_hidden_dim, self.embedding_size)
-        elif set_pooling_type == 'PSWE':
+        elif args.set_pooling_type == 'PSWE':
             logger.info('set pooling: PSWE')
             self.set_reference_points_count = args.set_reference_points_count
             self.set_pooling = PSWE(
                 self.set_hidden_dim,
                 self.set_reference_points_count,
                 self.embedding_size)
-        elif set_pooling_type == 'FSPool':
+        elif args.set_pooling_type == 'FSPool':
             logger.info('set pooling: FSPool')
             self.set_reference_points_count = args.set_reference_points_count
             self.set_pooling = FSPool(self.set_hidden_dim, self.set_reference_points_count, )
@@ -238,9 +235,10 @@ class SlayNetImageOnly(nn.Module):
         )
 
         # this is "Contrastive Learning Head"
+        logger.info(f"Number of CSA subspace(s): {args.csa_num_conditions}")
         self.csa_layer = CSA(
             device, self.embedding_size, self.type_onehot_dim,
-            num_conditions=csa_num_conditions)
+            num_conditions=args.csa_num_conditions)
 
     def forward(self, embedding, onehot, project_to_onehot, feat_mask=None, set_size=None, txt=None):
         dim_batch, dim_set, embedding_dim = embedding.shape
@@ -294,18 +292,12 @@ class SlayNetImageOnlyFSPool(SlayNetImageOnly):
             self,
             args: argparse.Namespace,
             number_of_types: int = 11,
-            set_encoder_type: str = 'SABS',
-            set_pooling_type: str = 'FSPool',
-            csa_num_conditions: int = 5,
             raw_img_embedding_dim: int = 512
     ):
-        assert set_pooling_type == 'FSPool'
+        assert args.set_pooling_type == 'FSPool'
         super(SlayNetImageOnlyFSPool, self).__init__(
             args,
             number_of_types=number_of_types,
-            set_encoder_type=set_encoder_type,
-            set_pooling_type=set_pooling_type,
-            csa_num_conditions=csa_num_conditions,
             raw_img_embedding_dim=raw_img_embedding_dim
         )
         self.fspool_linear_layer = nn.Linear(args.set_hidden_dim, args.dim_embed_img)
@@ -346,18 +338,12 @@ class SlayNet(SlayNetImageOnly):
             self,
             args: argparse.Namespace,
             number_of_types: int = 11,
-            set_encoder_type: str = 'SABS',
-            set_pooling_type: str = 'PSWE',
-            csa_num_conditions: int = 5,
             raw_img_embedding_dim: int = 512,
             raw_txt_embedding_dim: int = 512
     ):
         super(SlayNet, self).__init__(
             args,
             number_of_types=number_of_types,
-            set_encoder_type=set_encoder_type,
-            set_pooling_type=set_pooling_type,
-            csa_num_conditions=csa_num_conditions,
             raw_img_embedding_dim=raw_img_embedding_dim
         )
         assert raw_txt_embedding_dim > 0
@@ -442,18 +428,13 @@ class SlayNetFSPool(SlayNet):
             self,
             args: argparse.Namespace,
             number_of_types: int = 11,
-            set_encoder_type: str = 'SABS',
-            set_pooling_type: str = 'PSWE',
-            csa_num_conditions: int = 5,
             raw_img_embedding_dim: int = 512,
             raw_txt_embedding_dim: int = 512
     ):
+        assert args.set_pooling_type == 'FSPool'
         super(SlayNetFSPool, self).__init__(
             args,
             number_of_types=number_of_types,
-            set_encoder_type=set_encoder_type,
-            set_pooling_type=set_pooling_type,
-            csa_num_conditions=csa_num_conditions,
             raw_img_embedding_dim=raw_img_embedding_dim,
             raw_txt_embedding_dim=raw_txt_embedding_dim
         )

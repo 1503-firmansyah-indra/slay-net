@@ -13,7 +13,7 @@ from torch.nn.utils.rnn import pad_sequence
 
 
 class OutfitSetLoader(torch.utils.data.Dataset):
-    def __init__(self, args, split, learning_type=None,
+    def __init__(self, args, split,
                  item_embeddings=None, item_embeddings_index_mapping=None,
                  item_text_embeddings=None):
         '''
@@ -40,19 +40,21 @@ class OutfitSetLoader(torch.utils.data.Dataset):
         self.item_embeddings = item_embeddings
         self.item_embeddings_index_mapping = item_embeddings_index_mapping
 
-        self.neg_sample_size = args.negative_sample_size
-        self.neg_sampling_strategy = 'general'
-
         self.max_set_len = args.max_set_len
         logger.info(f"Max set length: {self.max_set_len}")
 
-        self.learning_type = learning_type
+        self.learning_type = None
 
         self.rootdir = args.data_root_dir
 
         assert split in ["train", "valid", "test"]
         self.split = split
         self.is_train = split == 'train'
+
+        self.neg_sample_size = args.negative_sample_size
+        self.neg_sampling_strategy = None
+        if self.is_train:
+            self.set_sampling_strategy('fine-grained' if args.finegrain_sampling else 'general')
 
         if self.is_train:
             with open(args.contrastive_learning_data_path, 'r') as f:
@@ -169,17 +171,7 @@ class OutfitSetLoader(torch.utils.data.Dataset):
         return output
 
     def load_compatibility_questions(self):
-        if self.split == 'train':
-            if self.use_full_data:
-                logger.info("loading FULL compatibility data")
-                compatibility_data_path = os.path.join(self.rootdir, f"compatibility_{self.split}.txt")
-            else:
-                logger.info("loading PARTIAL compatibility data")
-                compatibility_data_path = os.path.join(self.rootdir, f"compatibility_{self.split}_small.txt")
-        elif self.split in ['valid', 'test']:
-            compatibility_data_path = os.path.join(self.rootdir, f"compatibility_{self.split}.txt")
-        else:
-            raise Exception("Invalid argument 'split' ")
+        compatibility_data_path = os.path.join(self.rootdir, f"compatibility_{self.split}.txt")
         with open(compatibility_data_path, 'r') as f:
             raw_comp_data = [i.strip().split() for i in f.readlines()]
         output = []
@@ -217,6 +209,7 @@ class OutfitSetLoader(torch.utils.data.Dataset):
     def set_sampling_strategy(self, input_strategy):
         assert input_strategy in ['general', 'fine-grained']
         self.neg_sampling_strategy = input_strategy
+        logger.info(f"Negative sampling strategy: {self.neg_sampling_strategy}")
         return True
 
     def sample_negative(self, outfit_id, item_id, item_type):
