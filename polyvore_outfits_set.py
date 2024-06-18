@@ -40,8 +40,8 @@ class OutfitSetLoader(torch.utils.data.Dataset):
         self.item_embeddings = item_embeddings
         self.item_embeddings_index_mapping = item_embeddings_index_mapping
 
-        self.max_set_len = args.max_set_len
-        logger.info(f"Max set length: {self.max_set_len}")
+        self.max_outfit_length = args.max_outfit_length
+        logger.info(f"Maximum outfit length: {self.max_outfit_length}")
 
         self.learning_type = None
 
@@ -330,12 +330,12 @@ class OutfitSetLoader(torch.utils.data.Dataset):
             else:
                 this_text = torch.zeros(1)
             outfit_text += (this_text,)
-        if len(outfit_image) < self.max_set_len and self.is_train:
+        if len(outfit_image) < self.max_outfit_length and self.is_train:
             outfit_img_mask = torch.cat((
                 torch.ones(len(outfit_image), self.image_embedding_size),
-                torch.zeros(self.max_set_len - len(outfit_image), self.image_embedding_size)
+                torch.zeros(self.max_outfit_length - len(outfit_image), self.image_embedding_size)
             ))
-            for _ in range(self.max_set_len - len(outfit_image)):
+            for _ in range(self.max_outfit_length - len(outfit_image)):
                 outfit_image += (torch.zeros(this_image.shape),)
                 outfit_type_onehot += (torch.zeros(this_onehot.shape),)
                 outfit_text += (torch.zeros(this_text.shape),)
@@ -433,12 +433,12 @@ class OutfitSetLoader(torch.utils.data.Dataset):
             else:
                 each_o_text = torch.zeros(1)
             outfit_text += (each_o_text,)
-        if len(outfit_image) < self.max_set_len and self.is_train:
+        if len(outfit_image) < self.max_outfit_length and self.is_train:
             outfit_img_mask = torch.cat((
                 torch.ones(len(outfit_image), self.image_embedding_size),
-                torch.zeros(self.max_set_len - len(outfit_image), self.image_embedding_size)
+                torch.zeros(self.max_outfit_length - len(outfit_image), self.image_embedding_size)
             ))
-            for _ in range(self.max_set_len - len(outfit_image)):
+            for _ in range(self.max_outfit_length - len(outfit_image)):
                 outfit_image += (torch.zeros(each_o_image.shape),)
                 outfit_type_onehot += (torch.zeros(each_o_onehot.shape),)
                 outfit_text += (torch.zeros(each_o_text.shape),)

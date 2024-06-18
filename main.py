@@ -140,7 +140,7 @@ def read_run_config(args: argparse.Namespace):
     args.item_types_path = train_config['data']['item_types_path']
 
     args.data_root_dir = train_config['data']['data_root_dir']
-    args.max_set_len = int(train_config['data']['max_set_len'])
+    args.max_outfit_length = int(train_config['data']['max_outfit_length'])
 
     # training
     args.learning_type = train_config['training']['learning_type']
