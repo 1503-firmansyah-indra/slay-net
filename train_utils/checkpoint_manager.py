@@ -1,6 +1,8 @@
 from datetime import datetime
 import os
 
+from loguru import logger
+
 
 class CheckpointManager:
     def __init__(self, args,
@@ -50,3 +52,35 @@ class CheckpointManager:
                 f"_inst{instance_count}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_x"
             checkpoint_path = os.path.join(checkpoint_dir, f"{name_affix}.pth")
         return checkpoint_path
+
+
+class CheckpointMetricManager:
+    def __init__(self, metric_type):
+        assert metric_type in ['compatibility_auc', 'fitb_accuracy']
+        self.metric_type = metric_type
+        self.epoch_to_calculated_metrics = {}
+        self.best_metric_value = 0
+        self.best_epoch = None
+
+    def add_epoch_metric(self, epoch_number, value, checkpoint_path):
+        assert epoch_number not in self.epoch_to_calculated_metrics.keys()
+        self.epoch_to_calculated_metrics[epoch_number] = {
+            "metric_type": self.metric_type,
+            "value": value,
+            "checkpoint_path": checkpoint_path
+        }
+        if value >= self.best_metric_value:
+            logger.info(f"Checkpoint metric | best epoch is updated to '{epoch_number}' with metric value '{value}'")
+            self.best_metric_value = value
+            self.best_epoch = epoch_number
+        return True
+
+    def get_best_epoch_metric(self):
+        if self.best_epoch is not None:
+            logger.info(f"Checkpoint metric | best epoch is '{self.best_epoch}' "
+                        f"with metric '{self.metric_type}' of '{self.best_metric_value}'")
+            return self.epoch_to_calculated_metrics[self.best_epoch]
+        else:
+            logger.info("Checkpoint metric | No epoch has been completed, None is returned")
+            return None
+

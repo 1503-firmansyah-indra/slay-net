@@ -9,10 +9,23 @@ data:
   data_root_dir: ../data/polyvore_outfits/nondisjoint/
   max_outfit_length: 19
 training:
-  learning_type: combined
+  learning_type: curriculum_main
   negative_sample_size: 10
   lr: 5e-5
-  finegrain_sampling: 0
+  curriculum_phase_1:
+    this_phase_learning_type: combined
+    this_phase_epochs: 20
+    finegrain_sampling: 0
+    weight_contrastive: 0.8
+    weight_comp: 0.2
+    contrastive_add_minimum: 0
+  curriculum_phase_2:
+    this_phase_learning_type: contrastive
+    this_phase_epochs: 50
+    finegrain_sampling: 1
+    weight_contrastive: 1
+    weight_comp: 0
+    contrastive_add_minimum: 1
 model:
   dim_embed_img: 64
   set_encoder_type: SABS

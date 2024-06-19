@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 from torchmetrics import AUROC
 
-from train_utils import CheckpointManager
+from train_utils import CheckpointManager, CheckpointMetricManager
 from metrics import calculate_fitb, calculate_compatibility_auc
 from models import SlayNetImageOnly
 from polyvore_outfits_set import OutfitSetLoader
@@ -90,7 +90,10 @@ def calculate_metrics_and_print(args, model, dataset, metric_batch, development_
         args, model, dataset, batch_size=metric_batch, development_test=development_test)
     logger.info(f"Epoch: {epoch_count} | FITB accuracy: {round(this_epoch_fitb.item(), 5)} | "
           f"Compatibility accuracy: {round(this_epoch_comp_auc.item(), 5)}")
-    return True
+    return {
+        "compatibility_auc": round(this_epoch_comp_auc.item(), 5),
+        "fitb_accuracy": round(this_epoch_fitb.item(), 5)
+    }
 
 
 def train_combined_losses(args: argparse.Namespace, model: SlayNetImageOnly,
@@ -105,26 +108,21 @@ def train_combined_losses(args: argparse.Namespace, model: SlayNetImageOnly,
     learning_rate = args.lr
     num_negative_sample = args.negative_sample_size
 
-    # for triplet loss
-    triplet_loss_margin = args.triplet_loss_margin
-    logger.info(f"triplet loss margin: {triplet_loss_margin}")
-    triplet_negative_aggregate = args.triplet_negative_aggregate
-
-    # for smooth AP
-    smoothap_sigmoid_temperature = args.smoothap_sigmoid_temperature
-    smoothap_similarity_measure = args.smoothap_similarity_measure
+    # for contrastive loss
+    contrastive_loss_margin = args.contrastive_loss_margin
+    logger.info(f"contrastive loss margin: {contrastive_loss_margin}")
+    contrastive_negative_aggregate = args.contrastive_negative_aggregate
 
     # for loss combination
-    weight_triplet = args.weight_triplet
-    weight_smoothap = args.weight_smoothap
+    weight_contrastive = args.weight_contrastive
     weight_comp = args.weight_comp
-    logger.info(f"Loss weights: triplet = {weight_triplet} | smooth AP = {weight_smoothap} | compatibility = {weight_comp}")
+    logger.info(f"Loss weights: contrastive = {weight_contrastive} | compatibility = {weight_comp}")
 
     checkpoint_dir = args.checkpoint_dir
 
     kwargs = {'num_workers': args.dataloader_workers, 'pin_memory': True} if args.cuda else {}
 
-    dataloader_triplet = torch.utils.data.DataLoader(
+    dataloader_contrastive = torch.utils.data.DataLoader(
         contrastive_dataset,
         batch_size=args.batch_size, shuffle=True,
         #collate_fn=triple_loss_set_collation,
@@ -140,20 +138,16 @@ def train_combined_losses(args: argparse.Namespace, model: SlayNetImageOnly,
     input_device = torch.device("cuda:0" if args.cuda else "cpu")
 
     bce_loss_calculator = nn.BCEWithLogitsLoss()
-    if args.triplet_add_minimum:
-        logger.info("Triplet loss variant: aggregate and minimum")
-        triplet_loss_calculator = SetWiseOutfitRankingLossDifficult(
-            triplet_loss_margin, triplet_negative_aggregate, num_negative_sample, input_device)
+    if args.contrastive_add_minimum:
+        logger.info("contrastive loss variant: aggregate and minimum")
+        contrastive_loss_calculator = SetWiseOutfitRankingLossDifficult(
+            contrastive_loss_margin, contrastive_negative_aggregate, num_negative_sample, input_device)
     else:
-        logger.info("Triplet loss variant: aggregate only")
-        triplet_loss_calculator = SetWiseOutfitRankingLoss(
-            triplet_loss_margin, triplet_negative_aggregate, num_negative_sample, input_device)
+        logger.info("contrastive loss variant: aggregate only")
+        contrastive_loss_calculator = SetWiseOutfitRankingLoss(
+            contrastive_loss_margin, contrastive_negative_aggregate, num_negative_sample, input_device)
     if sys.platform != 'win32':
-        triplet_loss_calculator = torch.compile(triplet_loss_calculator)
-    smoothap_loss_calculator = SmoothAP(
-        input_device, anneal=smoothap_sigmoid_temperature, similarity_measure=smoothap_similarity_measure)
-    if sys.platform != 'win32':
-        smoothap_loss_calculator = torch.compile(smoothap_loss_calculator)
+        contrastive_loss_calculator = torch.compile(contrastive_loss_calculator)
 
     parameters = filter(lambda p: p.requires_grad, model.parameters())
     optimizer = torch.optim.Adam(parameters, lr=learning_rate)
@@ -163,6 +157,7 @@ def train_combined_losses(args: argparse.Namespace, model: SlayNetImageOnly,
 
     # checkpoint name modifier
     this_checkpoint_manager = CheckpointManager(args)
+    this_metric_manager = CheckpointMetricManager('fitb_accuracy')
 
     start_time = time.time()
     logger.info('Combined Losses training has started...')
@@ -173,7 +168,7 @@ def train_combined_losses(args: argparse.Namespace, model: SlayNetImageOnly,
     sigmoid = nn.Sigmoid()
 
     iterables = {
-        'triplet': dataloader_triplet,
+        'contrastive': dataloader_contrastive,
         'comp': dataloader_comp
     }
     combined_loader = CombinedLoader(iterables, 'max_size_cycle')
@@ -183,8 +178,8 @@ def train_combined_losses(args: argparse.Namespace, model: SlayNetImageOnly,
     for e in range(epoch_num):
         for batch, iter_count, _ in combined_loader:
             pos_img, pos_onehot, outfit_img, outfit_onehot, out_img_mask, \
-                neg_img, neg_onehot, triplet_outfit_len, \
-                pos_txt, outfit_txt, neg_txt = batch['triplet']
+                neg_img, neg_onehot, contrastive_outfit_len, \
+                pos_txt, outfit_txt, neg_txt = batch['contrastive']
             pos_img = pos_img.to(input_device)
             pos_onehot = pos_onehot.to(input_device)
             outfit_img = outfit_img.to(input_device)
@@ -192,7 +187,7 @@ def train_combined_losses(args: argparse.Namespace, model: SlayNetImageOnly,
             out_img_mask = out_img_mask.to(input_device)
             neg_img = neg_img.to(input_device)
             neg_onehot = neg_onehot.to(input_device)
-            triplet_outfit_len = triplet_outfit_len.to(input_device)
+            contrastive_outfit_len = contrastive_outfit_len.to(input_device)
             pos_txt = pos_txt.to(input_device)
             outfit_txt = outfit_txt.to(input_device)
             neg_txt = neg_txt.to(input_device)
@@ -223,24 +218,20 @@ def train_combined_losses(args: argparse.Namespace, model: SlayNetImageOnly,
                 # calculate representation for anchor, positive and negative
                 f_o = model(
                     outfit_img, outfit_onehot, pos_onehot,
-                    feat_mask=out_img_mask, set_size=triplet_outfit_len, txt=outfit_txt)
+                    feat_mask=out_img_mask, set_size=contrastive_outfit_len, txt=outfit_txt)
                 f_p = model.forward_positive(pos_img, pos_onehot, txt=pos_txt)
                 f_n = model.forward_negative(neg_img, neg_onehot, txt=neg_txt)
 
-                # Triplet loss
-                if weight_triplet > 0:
-                    triplet_loss = triplet_loss_calculator(f_o, f_p, f_n)
-                    loss += weight_triplet*triplet_loss
-
-                # Smooth AP
-                if weight_smoothap > 0:
-                    candidates = torch.cat((f_p.unsqueeze(1), f_n), dim=1)
-                    smoothap_loss = smoothap_loss_calculator(f_o, candidates)
-                    loss += weight_smoothap*smoothap_loss
+                # contrastive loss
+                contrastive_loss = contrastive_loss_calculator(f_o, f_p, f_n)
+                loss += weight_contrastive*contrastive_loss
 
                 if not torch.all(torch.isfinite(loss)):
                     logger.info("Loss becomes infinite, stopping the training early")
-                    return True
+                    end_time = time.time()
+                    time_taken = end_time - start_time
+                    logger.info(f"The training took: {round(time_taken, 1)} seconds")
+                    return this_metric_manager.get_best_epoch_metric()
 
             if args.cuda:
                 scaler.scale(loss).backward()
@@ -254,10 +245,7 @@ def train_combined_losses(args: argparse.Namespace, model: SlayNetImageOnly,
             if iter_count % print_interval == 0:
                 print_message = f"Epoch: {e} | iteration {iter_count} | loss {round(loss.item(), 5)}" \
                                 f" | BCE loss {round(bce_loss.item(), 5)}"
-                if weight_triplet > 0:
-                    print_message += f" | Triplet loss {round(triplet_loss.item(), 5)}"
-                if weight_smoothap > 0:
-                    print_message += f" | Smooth AP loss {round(smoothap_loss.item(), 5)}"
+                print_message += f" | contrastive loss {round(contrastive_loss.item(), 5)}"
                 logger.info(print_message)
             if development_test:
                 break
@@ -273,14 +261,21 @@ def train_combined_losses(args: argparse.Namespace, model: SlayNetImageOnly,
         logger.info(f"A checkpoint has just saved in '{checkpoint_path}'")
 
         # calculating metrics using validation dataset
-        calculate_metrics_and_print(args, model, valid_dataset, valid_metric_batch, development_test, e)
+        this_validation_metrics = calculate_metrics_and_print(
+            args, model, valid_dataset, valid_metric_batch, development_test, e + 1)
+        # add the metrics to metric manager to keep track the best checkpoint
+        this_metric_manager.add_epoch_metric(
+            e + 1,
+            this_validation_metrics[this_metric_manager.metric_type],
+            checkpoint_path
+        )
 
         if development_test:
             break
     end_time = time.time()
     time_taken = end_time - start_time
     logger.info(f"The training took: {round(time_taken, 1)} seconds")
-    return True
+    return this_metric_manager.get_best_epoch_metric()
 
 
 def train_contrastive(args: argparse.Namespace, model: SlayNetImageOnly, dataset: OutfitSetLoader, epoch_num: int,
@@ -290,10 +285,10 @@ def train_contrastive(args: argparse.Namespace, model: SlayNetImageOnly, dataset
     learning_rate = args.lr
     num_negative_sample = args.negative_sample_size
 
-    # for triplet loss
-    triplet_loss_margin = args.triplet_loss_margin
-    logger.info(f"triplet loss margin: {triplet_loss_margin}")
-    triplet_negative_aggregate = args.triplet_negative_aggregate
+    # for contrastive loss
+    contrastive_loss_margin = args.contrastive_loss_margin
+    logger.info(f"contrastive loss margin: {contrastive_loss_margin}")
+    contrastive_negative_aggregate = args.contrastive_negative_aggregate
 
     input_device = torch.device("cuda:0" if args.cuda else "cpu")
     checkpoint_dir = args.checkpoint_dir
@@ -306,16 +301,16 @@ def train_contrastive(args: argparse.Namespace, model: SlayNetImageOnly, dataset
         **kwargs
     )
 
-    if args.triplet_add_minimum:
-        logger.info("Triplet loss variant: aggregate and minimum")
-        triplet_loss_calculator = SetWiseOutfitRankingLossDifficult(
-            triplet_loss_margin, triplet_negative_aggregate, num_negative_sample, input_device)
+    if args.contrastive_add_minimum:
+        logger.info("contrastive loss variant: aggregate and minimum")
+        contrastive_loss_calculator = SetWiseOutfitRankingLossDifficult(
+            contrastive_loss_margin, contrastive_negative_aggregate, num_negative_sample, input_device)
     else:
-        logger.info("Triplet loss variant: aggregate only")
-        triplet_loss_calculator = SetWiseOutfitRankingLoss(
-            triplet_loss_margin, triplet_negative_aggregate, num_negative_sample, input_device)
+        logger.info("contrastive loss variant: aggregate only")
+        contrastive_loss_calculator = SetWiseOutfitRankingLoss(
+            contrastive_loss_margin, contrastive_negative_aggregate, num_negative_sample, input_device)
     if sys.platform != 'win32':
-        triplet_loss_calculator = torch.compile(triplet_loss_calculator)
+        contrastive_loss_calculator = torch.compile(contrastive_loss_calculator)
     parameters = filter(lambda p: p.requires_grad, model.parameters())
     optimizer = torch.optim.Adam(parameters, lr=learning_rate)
 
@@ -324,6 +319,7 @@ def train_contrastive(args: argparse.Namespace, model: SlayNetImageOnly, dataset
 
     # checkpoint name modifier
     this_checkpoint_manager = CheckpointManager(args)
+    this_metric_manager = CheckpointMetricManager('fitb_accuracy')
 
     start_time = time.time()
     logger.info('Triple Loss training has started...')
@@ -334,7 +330,7 @@ def train_contrastive(args: argparse.Namespace, model: SlayNetImageOnly, dataset
     for e in range(epoch_num):
         for iter_count, each_batch in enumerate(dataloader):
             pos_img, pos_onehot, outfit_img, outfit_onehot, out_img_mask, \
-                neg_img, neg_onehot, triplet_outfit_len, \
+                neg_img, neg_onehot, contrastive_outfit_len, \
                 pos_txt, outfit_txt, neg_txt = each_batch
             pos_img = pos_img.to(input_device)
             pos_onehot = pos_onehot.to(input_device)
@@ -343,7 +339,7 @@ def train_contrastive(args: argparse.Namespace, model: SlayNetImageOnly, dataset
             out_img_mask = out_img_mask.to(input_device)
             neg_img = neg_img.to(input_device)
             neg_onehot = neg_onehot.to(input_device)
-            triplet_outfit_len = triplet_outfit_len.to(input_device)
+            contrastive_outfit_len = contrastive_outfit_len.to(input_device)
             pos_txt = pos_txt.to(input_device)
             outfit_txt = outfit_txt.to(input_device)
             neg_txt = neg_txt.to(input_device)
@@ -353,14 +349,17 @@ def train_contrastive(args: argparse.Namespace, model: SlayNetImageOnly, dataset
             with torch.cuda.amp.autocast() if args.cuda else nullcontext():
                 f_o = model(
                     outfit_img, outfit_onehot, pos_onehot,
-                    feat_mask=out_img_mask, set_size=triplet_outfit_len, txt=outfit_txt)
+                    feat_mask=out_img_mask, set_size=contrastive_outfit_len, txt=outfit_txt)
                 f_p = model.forward_positive(pos_img, pos_onehot, txt=pos_txt)
                 f_n = model.forward_negative(neg_img, neg_onehot, txt=neg_txt)
 
-                loss = triplet_loss_calculator(f_o, f_p, f_n)
+                loss = contrastive_loss_calculator(f_o, f_p, f_n)
                 if not torch.all(torch.isfinite(loss)):
                     logger.info("Loss becomes infinite, stopping the training early")
-                    return True
+                    end_time = time.time()
+                    time_taken = end_time - start_time
+                    logger.info(f"The training took: {round(time_taken, 1)} seconds")
+                    return this_metric_manager.get_best_epoch_metric()
 
             if args.cuda:
                 scaler.scale(loss).backward()
@@ -384,14 +383,21 @@ def train_contrastive(args: argparse.Namespace, model: SlayNetImageOnly, dataset
         logger.info(f"A checkpoint has just saved in '{checkpoint_path}'")
 
         # calculating metrics using validation dataset
-        calculate_metrics_and_print(args, model, valid_dataset, valid_metric_batch, development_test, e)
+        this_validation_metrics = calculate_metrics_and_print(
+            args, model, valid_dataset, valid_metric_batch, development_test, e + 1)
+        # add the metrics to metric manager to keep track the best checkpoint
+        this_metric_manager.add_epoch_metric(
+            e + 1,
+            this_validation_metrics[this_metric_manager.metric_type],
+            checkpoint_path
+        )
 
         if development_test:
             break
     end_time = time.time()
     time_taken = end_time - start_time
     logger.info(f"The training took: {round(time_taken, 1)} seconds")
-    return True
+    return this_metric_manager.get_best_epoch_metric()
 
 
 def train_compatibility(args: argparse.Namespace, model: SlayNetImageOnly, dataset: OutfitSetLoader, epoch_num: int,
@@ -419,6 +425,7 @@ def train_compatibility(args: argparse.Namespace, model: SlayNetImageOnly, datas
 
     # checkpoint name modifier
     this_checkpoint_manager = CheckpointManager(args)
+    this_metric_manager = CheckpointMetricManager('compatibility_auc')
 
     start_time = time.time()
     logger.info('Compatibility training has started...')
@@ -451,7 +458,10 @@ def train_compatibility(args: argparse.Namespace, model: SlayNetImageOnly, datas
                 loss = loss_calculator(f_compatibility, c_outfit_label.float())
                 if not torch.all(torch.isfinite(loss)):
                     logger.info("Loss becomes infinite, stopping the training early")
-                    return True
+                    end_time = time.time()
+                    time_taken = end_time - start_time
+                    logger.info(f"The training took: {round(time_taken, 1)} seconds")
+                    return this_metric_manager.get_best_epoch_metric()
                 auroc.update(sigmoid(f_compatibility), c_outfit_label)
 
             if args.cuda:
@@ -479,12 +489,19 @@ def train_compatibility(args: argparse.Namespace, model: SlayNetImageOnly, datas
         logger.info(f"A checkpoint has just saved in '{checkpoint_path}'")
 
         # calculating metrics using validation dataset
-        calculate_metrics_and_print(args, model, valid_dataset, valid_metric_batch, development_test, e)
+        this_validation_metrics = calculate_metrics_and_print(
+            args, model, valid_dataset, valid_metric_batch, development_test, e + 1)
+        # add the metrics to metric manager to keep track the best checkpoint
+        this_metric_manager.add_epoch_metric(
+            e + 1,
+            this_validation_metrics[this_metric_manager.metric_type],
+            checkpoint_path
+        )
 
         if development_test:
             break
     end_time = time.time()
     time_taken = end_time - start_time
     logger.info(f"The training took: {round(time_taken, 1)} seconds")
-    return True
+    return this_metric_manager.get_best_epoch_metric()
 

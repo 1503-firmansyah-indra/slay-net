@@ -12,6 +12,41 @@ from polyvore_outfits_set import OutfitSetLoader
 from train import train_combined_losses, train_contrastive, train_compatibility
 
 
+def execute_train_combined(args, model, train_dataset, valid_dataset,
+                           fclip_embeddings, fclip_images_mapping, text_embeddings):
+    logger.info("training block 'combined'")
+    train_dataset.prepare_for_training("contrastive")
+    train_dataset_comp = OutfitSetLoader(
+        args, 'train',
+        item_embeddings=fclip_embeddings,
+        item_embeddings_index_mapping=fclip_images_mapping,
+        item_text_embeddings=text_embeddings
+    )
+    train_dataset_comp.prepare_for_training("compatibility")
+    train_combined_losses(
+        args, model, train_dataset, train_dataset_comp, args.epochs,
+        valid_dataset, development_test=bool(args.development_test))
+    return True
+
+
+def execute_train_compatibility(args, model, train_dataset, valid_dataset):
+    logger.info("training block 'compatibility only'")
+    train_dataset.prepare_for_training("compatibility")
+    train_compatibility(
+        args, model, train_dataset, args.epochs,
+        valid_dataset, development_test=bool(args.development_test))
+    return True
+
+
+def execute_train_contrastive(args, model, train_dataset, valid_dataset):
+    logger.info("training block 'contrastive only'")
+    train_dataset.prepare_for_training("contrastive")
+    train_contrastive(
+        args, model, train_dataset, args.epochs,
+        valid_dataset, development_test=bool(args.development_test))
+    return True
+
+
 def main(args: argparse.Namespace):
     args.cuda = not args.no_cuda and torch.cuda.is_available()
     device = torch.device("cuda:0" if args.cuda else "cpu")
@@ -77,33 +112,53 @@ def main(args: argparse.Namespace):
         logger.info("training starts fresh")
 
     if args.learning_type == "combined" and (args.weight_comp > 0 and args.weight_contrastive > 0):
-        logger.info("training block 'combined'")
-        train_dataset.prepare_for_training("contrastive")
-        train_dataset_comp = OutfitSetLoader(
-            args, 'train',
-            item_embeddings=fclip_embeddings,
-            item_embeddings_index_mapping=fclip_images_mapping,
-            item_text_embeddings=text_embeddings
-        )
-        train_dataset_comp.prepare_for_training("compatibility")
-        train_combined_losses(
-            args, model, train_dataset, train_dataset_comp, args.epochs,
-            valid_dataset, development_test=bool(args.development_test))
+        execute_train_combined(args, model, train_dataset, valid_dataset,
+                               fclip_embeddings, fclip_images_mapping, text_embeddings)
 
     elif args.learning_type == "compatibility" or (args.weight_comp == 1 and args.weight_contrastive == 0):
-        logger.info("training block 'compatibility only'")
-        train_dataset.prepare_for_training("compatibility")
-        train_compatibility(
-            args, model, train_dataset, args.epochs,
-            valid_dataset, development_test=bool(args.development_test))
+        execute_train_compatibility(args, model, train_dataset, valid_dataset)
 
     elif args.learning_type == "contrastive" or (args.weight_contrastive == 1 and args.weight_comp == 0):
-        logger.info("training block 'Triplet only'")
-        train_dataset.prepare_for_training("triple_loss")
-        train_contrastive(
-            args, model, train_dataset, args.epochs,
-            valid_dataset, development_test=bool(args.development_test))
+        execute_train_contrastive(args, model, train_dataset, valid_dataset)
 
+    elif args.learning_type == "curriculum_main":
+        logger.info("training block 'curriculum - main'")
+
+        # checking mandatory columns in the config for each phase
+        for each in args.curriculum_config_overwrite:
+            assert each.get('this_phase_learning_type', None) in ["combined", "compatibility", "contrastive"]
+
+            assert int(each.get('this_phase_epochs', None)) is not None
+            assert bool(int(each.get('finegrain_sampling', None))) is not None
+            assert float(each.get('weight_contrastive', None)) is not None
+            assert float(each.get('weight_comp', None)) is not None
+            assert bool(int(each.get('contrastive_add_minimum', None))) is not None
+
+        # this variable captures main information from previous curriculum phase
+        previous_phase_result = None
+
+        for phase_index, each_phase_config in enumerate(args.curriculum_config_overwrite):
+            args.epochs = int(each_phase_config['this_phase_epochs'])
+            args.finegrain_sampling = bool(int(each_phase_config.get('finegrain_sampling', None)))
+            args.weight_contrastive = float(each_phase_config.get('weight_contrastive', None))
+            args.weight_comp = float(each_phase_config.get('weight_comp', None))
+            logger.info(f"curriculum phase {phase_index + 1} | "
+                        f"learning type: '{each_phase_config.get('this_phase_learning_type')}' | "
+                        f"training epochs: {args.epochs}")
+
+            if previous_phase_result is not None:
+                logger.info(f"training will be resumed from checkpoint '{previous_phase_result['checkpoint_path']}'")
+                model.load_state_dict(torch.load(previous_phase_result['checkpoint_path']))
+
+            if each_phase_config.get('this_phase_learning_type', None) == "combined":
+                previous_phase_result = execute_train_combined(args, model, train_dataset, valid_dataset,
+                                                               fclip_embeddings, fclip_images_mapping, text_embeddings)
+            elif each_phase_config.get('this_phase_learning_type', None) == "compatibility":
+                previous_phase_result = execute_train_compatibility(args, model, train_dataset, valid_dataset)
+            elif each_phase_config.get('this_phase_learning_type', None) == "contrastive":
+                previous_phase_result = execute_train_contrastive(args, model, train_dataset, valid_dataset)
+            else:
+                raise Exception("invalid value for 'this_phase_learning_type'")
     else:
         raise Exception("Invalid argument for 'learning_type'")
 
@@ -149,6 +204,11 @@ def read_run_config(args: argparse.Namespace):
     args.finegrain_sampling = bool(int(train_config['training'].get('finegrain_sampling', None)))
     args.resume = train_config['training'].get('resume', '')
 
+    if args.learning_type == 'curriculum_main':
+        args.curriculum_config_overwrite = []
+        args.curriculum_config_overwrite.append(train_config['curriculum_phase_1'])
+        args.curriculum_config_overwrite.append(train_config['curriculum_phase_2'])
+
     # model
     args.dim_embed_img = int(train_config['model']['dim_embed_img'])
     args.dim_embed_txt = int(train_config['model'].get('dim_embed_txt', 0))
@@ -156,10 +216,10 @@ def read_run_config(args: argparse.Namespace):
     args.set_pooling_type = train_config['model']['set_pooling_type']
     args.csn_num_conditions = int(train_config['model']['csn_num_conditions'])
 
-    # triplet loss
-    args.triplet_loss_margin = float(train_config['triplet_loss']['loss_margin'])
-    args.triplet_negative_aggregate = train_config['triplet_loss']['negative_aggregate']
-    args.triplet_add_minimum = bool(int(train_config['triplet_loss'].get('add_minimum', None)))
+    # contrastive loss
+    args.contrastive_loss_margin = float(train_config['contrastive_loss']['loss_margin'])
+    args.contrastive_negative_aggregate = train_config['contrastive_loss']['negative_aggregate']
+    args.contrastive_add_minimum = bool(int(train_config['contrastive_loss'].get('add_minimum', None)))
 
     # combined loss
     args.weight_contrastive = float(train_config['combined_loss']['weight_contrastive'])
@@ -216,10 +276,6 @@ if __name__ == '__main__':
                         help='number of epochs to train (default: 10)')
     parser.add_argument('--development_test', type=int, default=0, metavar='N',
                         help='to identify if the run is for development testing (1: yes, 0: no)')
-    parser.add_argument('--comp_epochs_done', type=int,
-                        help='the number of epochs done for compatibility task in the last checkpoint')
-    parser.add_argument('--triple_epochs_done', type=int,
-                        help='the number of epochs for triple loss task in the last checkpoint')
     args = parser.parse_args()
 
     multi_configs_main(args)
