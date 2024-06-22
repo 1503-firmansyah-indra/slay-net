@@ -38,3 +38,54 @@ Note:
 * [Sarkar et al., 2022] Sarkar, R., Bodla, N., Vasileva, M., Lin, Y.-L., Beniwal, A., Lu, A., and Medioni, G. (2022). Outfittransformer: Outfit representations for fashion recommendation. In *Proceedings of the IEEE/CVF Conference on computer vision and pattern recognition*, pages 2263–2267.
 * [Vasileva et al., 2018] Vasileva, M. I., Plummer, B. A., Dusad, K., Rajpal, S., Kumar, R., and Forsyth, D. (2018). Learning type-aware embeddings for fashion compatibility. In *Proceedings of the European conference on computer vision (ECCV)*, pages 390–405.
 * [Wang and Zhong, 2023] Wang, X. and Zhong, Y. (2023). Text-conditioned outfit recommendation with hybrid attention layer. *IEEE Access*.
+
+# Running the code
+## Installing Required Libraries
+- Python version: 3.9.x
+- Package manager: Anaconda
+- Pytorch: the version that is used is 2.0.1 and if you are using Linux or Windows, you can execute the following
+    ```commandline
+    conda install pytorch==2.0.1 torchvision==0.15.2 torchaudio==2.0.2 pytorch-cuda=11.8 -c pytorch -c nvidia
+    ```
+- The following command is to install libraries needed for data pre-processing
+  ```commandline
+  pip install -r requirements_preprocessing.txt
+  ```
+  
+- The following command is to install libraries needed for training
+  ```commandline
+  pip install -r requirements.txt
+  ```
+
+
+## Downloading the data
+
+- The data can be downloaded from the Github repo for [Vasileva et al., 2018]: [link to the repo](https://github.com/mvasil/fashion-compatibility) 
+- The instructions provided here assumes that the Polyvore outfits data are stored on another folder called "data" outside the folder for this repo, such that the folder structure is as follows:
+  ```
+    ├── data
+    │     └── polyvore_outfits
+    └── slay-net
+  ```
+
+## Executing the data preprocessing
+
+1. Run the script to generate image feature using FashionCLIP
+    ```commandline
+    python preprocess_image.py
+    ```
+   
+2. Run the script to generate text feature using SentenceBERT
+    ```commandline
+    python preprocess_text.py
+    ```
+
+3. Run the script to create contrastive learning dataset for training
+    ```commandline
+    python preprocess_train_data.py --dataset_split train
+    ```
+
+4. Run the script to create metadata required for fine-grained negative samping
+    ```commandline
+    python preprocess_rak.py
+    ```

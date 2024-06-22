@@ -142,10 +142,15 @@ def main(args: argparse.Namespace):
             args.finegrain_sampling = bool(int(each_phase_config.get('finegrain_sampling', None)))
             args.weight_contrastive = float(each_phase_config.get('weight_contrastive', None))
             args.weight_comp = float(each_phase_config.get('weight_comp', None))
+            args.contrastive_add_minimum = bool(int(each.get('contrastive_add_minimum', None)))
             logger.info(f"curriculum phase {phase_index + 1} | "
                         f"learning type: '{each_phase_config.get('this_phase_learning_type')}' | "
                         f"training epochs: {args.epochs}")
 
+            # train dataset modification based on the config of current phase
+            train_dataset.set_sampling_strategy('fine-grained' if args.finegrain_sampling else 'general')
+
+            # trigger the training for the curriculum phase
             if previous_phase_result is not None:
                 logger.info(f"training will be resumed from checkpoint '{previous_phase_result['checkpoint_path']}'")
                 model.load_state_dict(torch.load(previous_phase_result['checkpoint_path']))

@@ -215,7 +215,7 @@ class OutfitSetLoader(torch.utils.data.Dataset):
     def sample_negative(self, outfit_id, item_id, item_type):
         if self.neg_sampling_strategy == 'general':
             self._sample_negative_general(outfit_id, item_id, item_type)
-        elif self.neg_sampling_strategy == 'contrastive':
+        elif self.neg_sampling_strategy == 'fine-grained':
             self.sample_negative_finegrained(outfit_id, item_id, item_type)
         else:
             raise Exception('Invalid negative sampling strategy')
