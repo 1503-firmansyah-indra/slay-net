@@ -13,6 +13,9 @@ training:
   negative_sample_size: 10
   lr: 5e-5
   finegrain_sampling: 0
+random_seed:
+  torch: 1
+  numpy: 1
 model:
   dim_embed_img: 64
   set_encoder_type: SABS

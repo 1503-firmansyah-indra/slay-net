@@ -1,2 +1,2 @@
-from slay_net import SlayNetImageOnly, SlayNetImageOnlyFSPool, SlayNet, SlayNetFSPool
+from .slay_net import SlayNetImageOnly, SlayNetImageOnlyFSPool, SlayNet, SlayNetFSPool
 

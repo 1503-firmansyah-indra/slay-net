@@ -26,6 +26,9 @@ training:
     weight_contrastive: 1
     weight_comp: 0
     contrastive_add_minimum: 1
+random_seed:
+  torch: 1
+  numpy: 1
 model:
   dim_embed_img: 64
   set_encoder_type: SABS

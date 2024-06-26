@@ -1,4 +1,5 @@
 import argparse
+import copy
 from datetime import datetime
 import json
 import yaml
@@ -55,18 +56,12 @@ def main(args: argparse.Namespace):
     logger_id: int = logger.add(f"logs/{config_file_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log")
     logger.info(f"currently running configuration '{args.config_dir}'")
 
-    if args.repeat_experiment:
-        torch.manual_seed(args.torch_seed)
-        if args.cuda:
-            torch.cuda.manual_seed(args.torch_seed)
-        logger.info(f"torch seed: {args.torch_seed}")
-        np.random.seed(args.numpy_seed)
-        logger.info(f"numpy seed: {args.numpy_seed}")
-    else:
-        logger.info(f"non-repeat experiment: torch seed set as '{args.seed}' ")
-        torch.manual_seed(args.seed)
-        if args.cuda:
-            torch.cuda.manual_seed(args.seed)
+    torch.manual_seed(args.torch_seed)
+    if args.cuda:
+        torch.cuda.manual_seed(args.torch_seed)
+    logger.info(f"torch seed: {args.torch_seed}")
+    np.random.seed(args.numpy_seed)
+    logger.info(f"numpy seed: {args.numpy_seed}")
 
     fclip_embeddings = np.load(args.fclip_embeddings_path)
     with open(args.fclip_images_mapping_path, 'r') as f:
@@ -175,21 +170,6 @@ def read_run_config(args: argparse.Namespace):
     with open(args.config_dir, 'r') as f:
         train_config = yaml.safe_load(f)
 
-    if 'repeat' in train_config.keys():
-        logger.info(f"performing repeat experiment ...")
-        this_config_dir = train_config['training']['config_path']
-        repeat_resume = ''
-        if 'resume' in train_config['training'].keys():
-            repeat_resume = train_config['training']['resume']
-        args.numpy_seed = int(train_config['repeat']['numpy_seed'])
-        args.torch_seed = int(train_config['repeat']['torch_seed'])
-        args.repeat_experiment = True
-        with open(this_config_dir, 'r') as f:
-            train_config = yaml.safe_load(f)
-        if repeat_resume != '':
-            train_config['training']['resume'] = repeat_resume
-            logger.info(f"the following model resume path is overwritten into source train config: '{repeat_resume}'")
-
     # data
     args.polyvore_split = train_config['data']['polyvore_split']
     args.item_metadata_path = train_config['data']['item_metadata_path']
@@ -213,6 +193,10 @@ def read_run_config(args: argparse.Namespace):
         args.curriculum_config_overwrite = []
         args.curriculum_config_overwrite.append(train_config['curriculum_phase_1'])
         args.curriculum_config_overwrite.append(train_config['curriculum_phase_2'])
+
+    # random seed
+    args.torch_seed = train_config['random_seed']['torch']
+    args.numpy_seed = train_config['random_seed']['numpy']
 
     # model
     args.dim_embed_img = int(train_config['model']['dim_embed_img'])
@@ -251,6 +235,18 @@ def multi_configs_main(args: argparse.Namespace):
             if i not in config_list:
                 config_list.append(i)
 
+    if args.repeat_config_list_dir is not None:
+        with open(args.config_list_dir, 'r') as f:
+            this_raw_config = json.load(f)
+            config_list_raw = this_raw_config["config_list"]
+            seed_list_raw = this_raw_config["seed_list"]
+        for i in config_list_raw:
+            for this_torch_seed, this_numpy_seed in seed_list_raw:
+                this_seed_config = copy.deepcopy(i)
+                this_seed_config['random_seed']['torch'] = this_torch_seed
+                this_seed_config['random_seed']['numpy'] = this_numpy_seed
+                config_list.append(this_seed_config)
+
     for each_config in config_list:
         args.config_dir = each_config
         read_run_config(args)
@@ -264,12 +260,13 @@ if __name__ == '__main__':
                         help='the configuration file for the training')
     parser.add_argument('--config_list_dir', type=str,
                         help='json file containing a list of train_config to be run')
+    parser.add_argument('--repeat_config_list_dir', tpye=str,
+                        help='json file containing a list of train_config to be run '
+                             'and the seed list for repeat training')
     parser.add_argument('--batch_size', type=int, default=128, metavar='N',
                         help='input batch size for training (default: 128)')
     parser.add_argument('--dataloader_workers', type=int, default=4,
                         help='the number of multi-processes for torch dataloader')
-    parser.add_argument('--seed', type=int, default=1, metavar='S',
-                        help='random seed (default: 1)')
     parser.add_argument('--no-cuda', action='store_true', default=False,
                         help='force to use CPU even GPU is detected '
                              '(GPU (hence, CUDA) is used by default when it is detected')

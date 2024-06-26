@@ -1,0 +1,12 @@
+{
+  "config_list": [
+    "train_config/proposed_curriculum.yaml"
+  ],
+  "seed_list": [
+    [9, 16],
+    [3, 15],
+    [21, 20],
+    [51, 9],
+    [324, 24]
+  ]
+}

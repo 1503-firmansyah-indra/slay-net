@@ -72,6 +72,7 @@ def convert_text_to_sentence_embedding(item_list_path: str, item_meta_data_path:
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(f"device used: '{device}'")
 
+    print("Text feature extraction has started")
     model = SentenceTransformer(
         'sentence-transformers/distiluse-base-multilingual-cased-v2',
         device=device
