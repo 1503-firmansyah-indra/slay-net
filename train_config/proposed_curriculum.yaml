@@ -31,6 +31,7 @@ random_seed:
   numpy: 1
 model:
   dim_embed_img: 64
+  dim_embed_txt: 64
   set_encoder_type: SABS
   set_pooling_type: PSWE
   csa_num_conditions: 5

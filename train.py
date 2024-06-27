@@ -243,7 +243,7 @@ def train_combined_losses(args: argparse.Namespace, model: SlayNetImageOnly,
 
             instance_count += outfit_img.shape[0]
             if iter_count % print_interval == 0:
-                print_message = f"Epoch: {e} | iteration {iter_count} | loss {round(loss.item(), 5)}" \
+                print_message = f"Epoch: {e+1} | iteration {iter_count+1} | loss {round(loss.item(), 5)}" \
                                 f" | BCE loss {round(bce_loss.item(), 5)}"
                 print_message += f" | contrastive loss {round(contrastive_loss.item(), 5)}"
                 logger.info(print_message)
@@ -270,8 +270,8 @@ def train_combined_losses(args: argparse.Namespace, model: SlayNetImageOnly,
             checkpoint_path
         )
 
-        if development_test:
-            break
+        # if development_test:
+        #     break
     end_time = time.time()
     time_taken = end_time - start_time
     logger.info(f"The training took: {round(time_taken, 1)} seconds")
@@ -392,8 +392,8 @@ def train_contrastive(args: argparse.Namespace, model: SlayNetImageOnly, dataset
             checkpoint_path
         )
 
-        if development_test:
-            break
+        # if development_test:
+        #     break
     end_time = time.time()
     time_taken = end_time - start_time
     logger.info(f"The training took: {round(time_taken, 1)} seconds")
@@ -498,8 +498,8 @@ def train_compatibility(args: argparse.Namespace, model: SlayNetImageOnly, datas
             checkpoint_path
         )
 
-        if development_test:
-            break
+        # if development_test:
+        #     break
     end_time = time.time()
     time_taken = end_time - start_time
     logger.info(f"The training took: {round(time_taken, 1)} seconds")

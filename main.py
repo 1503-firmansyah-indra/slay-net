@@ -24,28 +24,28 @@ def execute_train_combined(args, model, train_dataset, valid_dataset,
         item_text_embeddings=text_embeddings
     )
     train_dataset_comp.prepare_for_training("compatibility")
-    train_combined_losses(
+    train_meta = train_combined_losses(
         args, model, train_dataset, train_dataset_comp, args.epochs,
         valid_dataset, development_test=bool(args.development_test))
-    return True
+    return train_meta
 
 
 def execute_train_compatibility(args, model, train_dataset, valid_dataset):
     logger.info("training block 'compatibility only'")
     train_dataset.prepare_for_training("compatibility")
-    train_compatibility(
+    train_meta = train_compatibility(
         args, model, train_dataset, args.epochs,
         valid_dataset, development_test=bool(args.development_test))
-    return True
+    return train_meta
 
 
 def execute_train_contrastive(args, model, train_dataset, valid_dataset):
     logger.info("training block 'contrastive only'")
     train_dataset.prepare_for_training("contrastive")
-    train_contrastive(
+    train_meta = train_contrastive(
         args, model, train_dataset, args.epochs,
         valid_dataset, development_test=bool(args.development_test))
-    return True
+    return train_meta
 
 
 def main(args: argparse.Namespace):
@@ -137,7 +137,7 @@ def main(args: argparse.Namespace):
             args.finegrain_sampling = bool(int(each_phase_config.get('finegrain_sampling', None)))
             args.weight_contrastive = float(each_phase_config.get('weight_contrastive', None))
             args.weight_comp = float(each_phase_config.get('weight_comp', None))
-            args.contrastive_add_minimum = bool(int(each.get('contrastive_add_minimum', None)))
+            args.contrastive_add_minimum = bool(int(each_phase_config.get('contrastive_add_minimum', None)))
             logger.info(f"curriculum phase {phase_index + 1} | "
                         f"learning type: '{each_phase_config.get('this_phase_learning_type')}' | "
                         f"training epochs: {args.epochs}")
@@ -146,6 +146,7 @@ def main(args: argparse.Namespace):
             train_dataset.set_sampling_strategy('fine-grained' if args.finegrain_sampling else 'general')
 
             # trigger the training for the curriculum phase
+            logger.info(f"previous_phase_result: {previous_phase_result}")
             if previous_phase_result is not None:
                 logger.info(f"training will be resumed from checkpoint '{previous_phase_result['checkpoint_path']}'")
                 model.load_state_dict(torch.load(previous_phase_result['checkpoint_path']))
@@ -174,6 +175,7 @@ def read_run_config(args: argparse.Namespace):
     args.polyvore_split = train_config['data']['polyvore_split']
     args.item_metadata_path = train_config['data']['item_metadata_path']
 
+    args.contrastive_learning_data_path = train_config['data']['contrastive_learning_data_path']
     args.fclip_embeddings_path = train_config['data']['fclip_embeddings_path']
     args.fclip_images_mapping_path = train_config['data']['fclip_images_mapping_path']
     args.txt_embeddings_path = train_config['data'].get('txt_embeddings_path', None)
@@ -186,13 +188,12 @@ def read_run_config(args: argparse.Namespace):
     args.learning_type = train_config['training']['learning_type']
     args.negative_sample_size = int(train_config['training']['negative_sample_size'])
     args.lr = float(train_config['training']['lr'])
-    args.finegrain_sampling = bool(int(train_config['training'].get('finegrain_sampling', None)))
     args.resume = train_config['training'].get('resume', '')
-
+    args.finegrain_sampling = bool(int(train_config['training'].get('finegrain_sampling', 0)))
     if args.learning_type == 'curriculum_main':
         args.curriculum_config_overwrite = []
-        args.curriculum_config_overwrite.append(train_config['curriculum_phase_1'])
-        args.curriculum_config_overwrite.append(train_config['curriculum_phase_2'])
+        args.curriculum_config_overwrite.append(train_config['training']['curriculum_phase_1'])
+        args.curriculum_config_overwrite.append(train_config['training']['curriculum_phase_2'])
 
     # random seed
     args.torch_seed = train_config['random_seed']['torch']
@@ -203,12 +204,12 @@ def read_run_config(args: argparse.Namespace):
     args.dim_embed_txt = int(train_config['model'].get('dim_embed_txt', 0))
     args.set_encoder_type = train_config['model']['set_encoder_type']
     args.set_pooling_type = train_config['model']['set_pooling_type']
-    args.csn_num_conditions = int(train_config['model']['csn_num_conditions'])
+    args.csa_num_conditions = int(train_config['model']['csa_num_conditions'])
 
     # contrastive loss
     args.contrastive_loss_margin = float(train_config['contrastive_loss']['loss_margin'])
     args.contrastive_negative_aggregate = train_config['contrastive_loss']['negative_aggregate']
-    args.contrastive_add_minimum = bool(int(train_config['contrastive_loss'].get('add_minimum', None)))
+    args.contrastive_add_minimum = bool(int(train_config['contrastive_loss'].get('add_minimum', 0)))
 
     # combined loss
     args.weight_contrastive = float(train_config['combined_loss']['weight_contrastive'])
@@ -218,7 +219,7 @@ def read_run_config(args: argparse.Namespace):
     args.set_hidden_dim = train_config['set_pooling']['set_hidden_dim']
     args.set_reference_points_count = int(train_config['set_pooling']['set_reference_points_count'])
 
-    assert args.learning_type in ["combined", "contrastive", "compatibility"]
+    assert args.learning_type in ["combined", "contrastive", "compatibility", "curriculum_main"]
     return True
 
 
@@ -260,7 +261,7 @@ if __name__ == '__main__':
                         help='the configuration file for the training')
     parser.add_argument('--config_list_dir', type=str,
                         help='json file containing a list of train_config to be run')
-    parser.add_argument('--repeat_config_list_dir', tpye=str,
+    parser.add_argument('--repeat_config_list_dir', type=str,
                         help='json file containing a list of train_config to be run '
                              'and the seed list for repeat training')
     parser.add_argument('--batch_size', type=int, default=128, metavar='N',

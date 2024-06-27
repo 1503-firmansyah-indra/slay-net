@@ -214,9 +214,9 @@ class OutfitSetLoader(torch.utils.data.Dataset):
 
     def sample_negative(self, outfit_id, item_id, item_type):
         if self.neg_sampling_strategy == 'general':
-            self._sample_negative_general(outfit_id, item_id, item_type)
+            return self.sample_negative_general(outfit_id, item_id, item_type)
         elif self.neg_sampling_strategy == 'fine-grained':
-            self.sample_negative_finegrained(outfit_id, item_id, item_type)
+            return self.sample_negative_finegrained(outfit_id, item_id, item_type)
         else:
             raise Exception('Invalid negative sampling strategy')
 
@@ -297,20 +297,20 @@ class OutfitSetLoader(torch.utils.data.Dataset):
             assert self.learning_type in ["contrastive", "compatibility"]
 
         if self.is_train and self.learning_type == "contrastive" and self.set_metric is None:
-            self.getitem_contrastive(index)
+            return self.getitem_contrastive(index)
 
         elif self.set_metric == 'fitb':
-            self.getitem_fitb(index)
+            return self.getitem_fitb(index)
 
         elif self.set_metric == "compatibility" or \
                 (self.is_train and self.learning_type == "compatibility" and self.set_metric is None):
-            self.getitem_compatibility(index)
+            return self.getitem_compatibility(index)
 
         else:
             raise Exception("invalid combination of instance variables")
 
     def getitem_contrastive(self, index):
-        outfit_id, positive, rest_of_outfit = self.self.contrastive_learning_data[index]
+        outfit_id, positive, rest_of_outfit = self.contrastive_learning_data[index]
         positive_image_id, positive_type = positive
         positive_image, positive_type_onehot = self.load_item(positive_image_id, positive_type)
         if self.text_embedding_size > 0:
@@ -452,7 +452,7 @@ class OutfitSetLoader(torch.utils.data.Dataset):
 
     def __len__(self):
         if self.is_train and self.learning_type == "contrastive":
-            return len(self.self.contrastive_learning_data)
+            return len(self.contrastive_learning_data)
         elif self.set_metric == "fitb":
             return len(self.fitb_questions)
         elif self.set_metric == "compatibility" or \

@@ -2,7 +2,7 @@
 
 import torch
 import torch.nn as nn
-from torchinterp1d import interp1d
+from .torchinterp1d import interp1d
 
 class PSWE(nn.Module):
     def __init__(self, d_in, num_ref_points, num_projections):

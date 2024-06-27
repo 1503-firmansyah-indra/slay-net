@@ -8,8 +8,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from pswe import PSWE
-from fspool import FSPool
+from .pswe import PSWE
+from .fspool import FSPool
 
 
 class MAB(nn.Module):

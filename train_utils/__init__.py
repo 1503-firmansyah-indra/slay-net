@@ -1,2 +1,2 @@
-from checkpoint_manager import CheckpointManager, CheckpointMetricManager
+from .checkpoint_manager import CheckpointManager, CheckpointMetricManager
 
