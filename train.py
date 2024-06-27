@@ -250,7 +250,7 @@ def train_combined_losses(args: argparse.Namespace, model: SlayNetImageOnly,
             if development_test:
                 break
         this_train_auc = auroc.compute().item()
-        logger.info(f"Epoch: {e} | train AUC {round(this_train_auc, 5)} ")
+        logger.info(f"Epoch: {e+1} | train AUC {round(this_train_auc, 5)} ")
         auroc.reset()
 
         # saving the model checkpoint
@@ -372,7 +372,7 @@ def train_contrastive(args: argparse.Namespace, model: SlayNetImageOnly, dataset
             instance_count += pos_img.shape[0]
 
             if iter_count % print_interval == 0:
-                logger.info(f"Epoch: {e} | iteration {iter_count} | loss {round(loss.item(), 5)}")
+                logger.info(f"Epoch: {e+1} | iteration {iter_count+1} | loss {round(loss.item(), 5)}")
             if development_test:
                 break
         # saving the model checkpoint
@@ -474,11 +474,11 @@ def train_compatibility(args: argparse.Namespace, model: SlayNetImageOnly, datas
 
             instance_count += c_outfit_img.shape[0]
             if iter_count % print_interval == 0:
-                logger.info(f"Epoch: {e} | iteration {iter_count} | loss {round(loss.item(), 5)}")
+                logger.info(f"Epoch: {e+1} | iteration {iter_count+1} | loss {round(loss.item(), 5)}")
             if development_test:
                 break
         this_train_auc = auroc.compute().item()
-        logger.info(f"Epoch: {e} | train AUC {round(this_train_auc, 5)} ")
+        logger.info(f"Epoch: {e+1} | train AUC {round(this_train_auc, 5)} ")
         auroc.reset()
 
         # saving the model checkpoint
