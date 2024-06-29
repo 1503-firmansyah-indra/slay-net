@@ -146,8 +146,8 @@ def train_combined_losses(args: argparse.Namespace, model: SlayNetImageOnly,
         logger.info("contrastive loss variant: aggregate only")
         contrastive_loss_calculator = SetWiseOutfitRankingLoss(
             contrastive_loss_margin, contrastive_negative_aggregate, num_negative_sample, input_device)
-    if sys.platform != 'win32':
-        contrastive_loss_calculator = torch.compile(contrastive_loss_calculator)
+    # if sys.platform != 'win32':
+    #     contrastive_loss_calculator = torch.compile(contrastive_loss_calculator)
 
     parameters = filter(lambda p: p.requires_grad, model.parameters())
     optimizer = torch.optim.Adam(parameters, lr=learning_rate)
@@ -309,8 +309,8 @@ def train_contrastive(args: argparse.Namespace, model: SlayNetImageOnly, dataset
         logger.info("contrastive loss variant: aggregate only")
         contrastive_loss_calculator = SetWiseOutfitRankingLoss(
             contrastive_loss_margin, contrastive_negative_aggregate, num_negative_sample, input_device)
-    if sys.platform != 'win32':
-        contrastive_loss_calculator = torch.compile(contrastive_loss_calculator)
+    # if sys.platform != 'win32':
+    #     contrastive_loss_calculator = torch.compile(contrastive_loss_calculator)
     parameters = filter(lambda p: p.requires_grad, model.parameters())
     optimizer = torch.optim.Adam(parameters, lr=learning_rate)
 
