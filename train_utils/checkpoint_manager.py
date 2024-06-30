@@ -16,7 +16,8 @@ class CheckpointManager:
         self.chpt_name_modifier_comp = compatibility_epochs_done
 
         self.max_attempt = 10
-        self.config_file_name = args.config_dir.split('/')[-1].split('.yaml')[0]
+        self.config_file_name = (args.config_dir.split('/')[-1].split('.yaml')[0]
+                                 + f"_sp{args.torch_seed}sn{args.numpy_seed}")
 
     def generate_name(self, learning_type, checkpoint_dir, current_epoch_index, instance_count):
         '''

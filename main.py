@@ -52,7 +52,8 @@ def main(args: argparse.Namespace):
     args.cuda = not args.no_cuda and torch.cuda.is_available()
     device = torch.device("cuda:0" if args.cuda else "cpu")
 
-    config_file_name: str = args.config_dir.split('/')[-1].split('.yaml')[0]
+    config_file_name: str = (args.config_dir.split('/')[-1].split('.yaml')[0]
+                             + f"_sp{args.torch_seed}sn{args.numpy_seed}")
     logger_id: int = logger.add(f"logs/{config_file_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log")
     logger.info(f"currently running configuration '{args.config_dir}'")
 
@@ -224,35 +225,39 @@ def read_run_config(args: argparse.Namespace):
 
 
 def multi_configs_main(args: argparse.Namespace):
-    assert (args.config_dir is not None) or (args.config_list_dir is not None)
-    config_list = []
-    if args.config_dir is not None:
-        config_list.append(args.config_dir)
+    assert ((args.config_dir is not None) or (args.config_list_dir is not None) or
+            (args.repeat_config_list_dir is not None))
 
-    if args.config_list_dir is not None:
-        with open(args.config_list_dir, 'r') as f:
-            config_list_raw = json.load(f)["config_list"]
-        for i in config_list_raw:
-            if i not in config_list:
-                config_list.append(i)
+    if args.repeat_config_list_dir is None:
+        config_list = []
+        if args.config_dir is not None:
+            config_list.append(args.config_dir)
 
-    if args.repeat_config_list_dir is not None:
-        with open(args.config_list_dir, 'r') as f:
+        if args.config_list_dir is not None:
+            with open(args.config_list_dir, 'r') as f:
+                config_list_raw = json.load(f)["config_list"]
+            for i in config_list_raw:
+                if i not in config_list:
+                    config_list.append(i)
+
+        for each_config in config_list:
+            args.config_dir = each_config
+            read_run_config(args)
+            main(args)
+
+    else:
+        with open(args.repeat_config_list_dir, 'r') as f:
             this_raw_config = json.load(f)
             config_list_raw = this_raw_config["config_list"]
             seed_list_raw = this_raw_config["seed_list"]
         for i in config_list_raw:
             for this_torch_seed, this_numpy_seed in seed_list_raw:
-                this_seed_config = copy.deepcopy(i)
-                this_seed_config['random_seed']['torch'] = this_torch_seed
-                this_seed_config['random_seed']['numpy'] = this_numpy_seed
-                config_list.append(this_seed_config)
-
-    for each_config in config_list:
-        args.config_dir = each_config
-        read_run_config(args)
-        main(args)
-    return True
+                args.config_dir = i
+                read_run_config(args)
+                args.torch_seed = this_torch_seed
+                args.numpy_seed = this_numpy_seed
+                main(args)
+        return True
 
 
 if __name__ == '__main__':
@@ -279,6 +284,8 @@ if __name__ == '__main__':
                         help='number of epochs to train (default: 10)')
     parser.add_argument('--development_test', type=int, default=0, metavar='N',
                         help='to identify if the run is for development testing (1: yes, 0: no)')
+    parser.add_argument('--pytorch_compile', type=int, default=1,
+                        help='the flag to enable compilation of pytorch code to accelerate code run')
     args = parser.parse_args()
 
     multi_configs_main(args)
