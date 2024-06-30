@@ -144,44 +144,26 @@ def load_model_for_metrics_calculation(args: argparse.Namespace, checkpoint_dir:
 
     if args.txt_embeddings_path is None:
         if args.set_pooling_type == 'FSPool':
-            model = SlayNetImageOnlyFSPool(
-                args,
-                set_encoder_type=args.set_encoder_type,
-                set_pooling_type=args.set_pooling_type,
-                csa_num_conditions=args.csa_num_conditions
-            ).to(device)
+            model = SlayNetImageOnlyFSPool(args).to(device)
         else:
-            model = SlayNetImageOnly(
-                args,
-                set_encoder_type=args.set_encoder_type,
-                set_pooling_type=args.set_pooling_type,
-                csa_num_conditions=args.csa_num_conditions
-            ).to(device)
+            model = SlayNetImageOnly(args).to(device)
 
     else:
         if args.set_pooling_type == 'FSPool':
-            model = SlayNetFSPool(
-                args,
-                set_encoder_type=args.set_encoder_type,
-                set_pooling_type=args.set_pooling_type,
-                csa_num_conditions=args.csa_num_conditions
-            ).to(device)
+            model = SlayNetFSPool(args).to(device)
         else:
-            model = SlayNet(
-                args,
-                set_encoder_type=args.set_encoder_type,
-                set_pooling_type=args.set_pooling_type,
-                csa_num_conditions=args.csa_num_conditions
-            ).to(device)
+            model = SlayNet(args).to(device)
     logger.info(f"model is load from checkpoint '{checkpoint_dir}' ")
     model.load_state_dict(torch.load(checkpoint_dir))
     return model
 
 
-def calculate_metrics_and_save_result(args, this_model, input_dataset, model_name, development_test=False):
-    this_fitb = calculate_fitb(args, this_model, input_dataset, development_test=development_test)
-    this_comp_auc = calculate_compatibility_auc(args, this_model, input_dataset, development_test=development_test)
-    with open(os.path.join("metrics_calculation", f"{model_name}.txt"), 'w') as f:
+def calculate_metrics_and_save_result(args, this_model, input_dataset, output_path, development_test=False):
+    this_fitb = calculate_fitb(args, this_model, input_dataset,
+                               batch_size=args.batch_size, development_test=development_test)
+    this_comp_auc = calculate_compatibility_auc(args, this_model, input_dataset,
+                                                batch_size=args.batch_size, development_test=development_test)
+    with open(output_path, 'w') as f:
         f.write(f"fitb: {this_fitb.item()}\ncompatibility AUC: {this_comp_auc.item()}")
     return True
 

@@ -1,0 +1,10 @@
+{
+  "proposed_sp1sn1_phase1": {
+    "config": "train_config/proposed_curriculum.yaml",
+    "checkpoint": "<checkpoint path>"
+  },
+  "proposed_sp1sn1_phase2": {
+    "config": "train_config/proposed_curriculum.yaml",
+    "checkpoint": "<checkpoint path>"
+  }
+}
