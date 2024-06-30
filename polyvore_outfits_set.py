@@ -463,8 +463,7 @@ class OutfitSetLoader(torch.utils.data.Dataset):
 
 
 class ItemEmbeddingLoader(OutfitSetLoader):
-    def __init__(self, args: argparse.Namespace, split: str,
-                 learning_type=None, item_embeddings=None,
+    def __init__(self, args: argparse.Namespace, split: str, item_embeddings=None,
                  item_embeddings_index_mapping=None, item_text_embeddings=None):
         assert split == 'test'
 
@@ -475,8 +474,10 @@ class ItemEmbeddingLoader(OutfitSetLoader):
         self.selected_finegrain_list = list(self.finegrain2type.keys())
 
         super(ItemEmbeddingLoader, self).__init__(
-            args, split, learning_type=learning_type, item_text_embeddings=item_text_embeddings,
-            item_embeddings=item_embeddings, item_embeddings_index_mapping=item_embeddings_index_mapping
+            args, split,
+            item_text_embeddings=item_text_embeddings,
+            item_embeddings=item_embeddings,
+            item_embeddings_index_mapping=item_embeddings_index_mapping
         )
 
         self.selected_finegrain = None
@@ -509,7 +510,7 @@ class ItemEmbeddingLoader(OutfitSetLoader):
             a_outfit_id, a_item_idx = each_fitb['answers'][0].split('_')
             a_img = self.full_outfit_set_data[a_outfit_id][a_item_idx]
             a_finegrain = self.im2finegrain[a_img]
-            a_item_type = self.im2type[a_img]
+            a_item_type = self.im2category[a_img]
 
             if not a_finegrain in self.selected_finegrain_list:
                 skipped_count += 1
@@ -520,7 +521,7 @@ class ItemEmbeddingLoader(OutfitSetLoader):
             for each_q in each_fitb['question']:
                 outfit_id, item_idx = each_q.split('_')
                 img = self.full_outfit_set_data[outfit_id][item_idx]
-                item_type = self.im2type[img]
+                item_type = self.im2category[img]
                 this_question.append((img, item_type))
 
             output.append({

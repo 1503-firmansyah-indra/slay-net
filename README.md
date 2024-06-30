@@ -56,6 +56,11 @@ Note:
   ```commandline
   pip install -r requirements.txt
   ```
+  
+- The following command is to install libraries needed to calculate Recall@top-k
+  ```commandline
+  conda install -c pytorch faiss-cpu=1.8.0
+  ```
 
 
 ## Downloading the data

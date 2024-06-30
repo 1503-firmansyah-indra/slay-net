@@ -10,7 +10,7 @@ from torchmetrics import AUROC
 
 from models import SlayNetImageOnly, SlayNetImageOnlyFSPool, SlayNet, SlayNetFSPool
 
-from polyvore_outfits_set import fitb_set_collation, compatibility_set_collation, OutfitSetLoader
+from polyvore_outfits_set import fitb_set_collation, compatibility_set_collation, OutfitSetLoader, ItemEmbeddingLoader
 
 
 def calculate_fitb(args, model, dataset, batch_size=128, collate_function=fitb_set_collation,
@@ -115,8 +115,9 @@ def calculate_compatibility_auc(args, model, dataset, batch_size=128, collate_fu
     return auroc.compute()
 
 
-def load_data_for_metrics_calculation(args: argparse.Namespace, data_split: str):
+def load_data_for_metrics_calculation(args: argparse.Namespace, data_split: str, metric_type: str = 'comp-fitb'):
     assert data_split in ['valid', 'test']
+    assert metric_type in ['comp-fitb', 'rak']
     text_embeddings = None
     if args.txt_embeddings_path is not None:
         logger.info("image and text embeddings are used")
@@ -128,16 +129,24 @@ def load_data_for_metrics_calculation(args: argparse.Namespace, data_split: str)
     with open(args.fclip_images_mapping_path, 'r') as f:
         fclip_images_mapping = f.read().split(',')
     fclip_images_mapping = {image_id: idx for idx, image_id in enumerate(fclip_images_mapping)}
-    output_dataset = OutfitSetLoader(
-        args, data_split,
-        item_embeddings=fclip_embeddings,
-        item_embeddings_index_mapping=fclip_images_mapping,
-        item_text_embeddings=text_embeddings
-    )
+    if metric_type == 'comp-fitb':
+        output_dataset = OutfitSetLoader(
+            args, data_split,
+            item_embeddings=fclip_embeddings,
+            item_embeddings_index_mapping=fclip_images_mapping,
+            item_text_embeddings=text_embeddings
+        )
+    else:
+        output_dataset = ItemEmbeddingLoader(
+            args, data_split,
+            item_embeddings=fclip_embeddings,
+            item_embeddings_index_mapping=fclip_images_mapping,
+            item_text_embeddings=text_embeddings
+        )
     return output_dataset
 
 
-def load_model_for_metrics_calculation(args: argparse.Namespace, checkpoint_dir: str):
+def load_model_for_metrics_calculation(args: argparse.Namespace, checkpoint_dir: str, ):
     assert os.path.isfile(checkpoint_dir)
     args.cuda = not args.no_cuda and torch.cuda.is_available()
     device = torch.device("cuda:0" if args.cuda else "cpu")
