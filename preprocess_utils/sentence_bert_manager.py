@@ -51,7 +51,7 @@ def get_text_v2(item_list: list, meta_data: dict):
 
 
 def convert_text_to_sentence_embedding(item_list_path: str, item_meta_data_path: str, base_data_folder_dir: str,
-                                       get_text_version: str = 'v2'):
+                                       get_text_version: str = 'v1'):
     assert os.path.isfile(item_list_path)
     assert os.path.isfile(item_meta_data_path)
     assert os.path.isdir(base_data_folder_dir)
