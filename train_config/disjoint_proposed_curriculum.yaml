@@ -43,4 +43,4 @@ combined_loss:
   weight_comp: 0.2
 set_pooling:
   set_hidden_dim: 256
-  set_reference_points_count: 19
+  set_reference_points_count: 16
