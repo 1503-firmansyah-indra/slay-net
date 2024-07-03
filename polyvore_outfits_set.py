@@ -148,14 +148,13 @@ class OutfitSetLoader(torch.utils.data.Dataset):
     def load_fitb_questions(self):
         with open(os.path.join(self.rootdir, f"fill_in_blank_{self.split}.json"), 'r') as f:
             raw_fitb_data = json.load(f)
-        # TODO add note on data structure
         output = []
         # Note: index 0 under key 'answers' is the correct answer
         for each_fitb in raw_fitb_data:
             this_question = []
             for each_q in each_fitb['question']:
-                outfit_id, item_idx = each_q.split('_')
-                img = self.full_outfit_set_data[outfit_id][item_idx]
+                q_outfit_id, item_idx = each_q.split('_')
+                img = self.full_outfit_set_data[q_outfit_id][item_idx]
                 item_type = self.im2category[img]
                 this_question.append((img, item_type))
             this_answers = []
@@ -163,7 +162,10 @@ class OutfitSetLoader(torch.utils.data.Dataset):
                 outfit_id, item_idx = each_a.split('_')
                 img = self.full_outfit_set_data[outfit_id][item_idx]
                 item_type = self.im2category[img]
-                this_answers.append((img, item_type))
+                if q_outfit_id == outfit_id:
+                    this_answers.insert(0, (img, item_type))
+                else:
+                    this_answers.append((img, item_type))
             output.append({
                 'question': this_question,
                 'answers': this_answers
