@@ -7,7 +7,7 @@ data:
   item_types_path: ../data/polyvore_outfits/disjoint/item_types.json
   contrastive_learning_data_path: ../data/polyvore_outfits/disjoint/set_based_train_full.json
   data_root_dir: ../data/polyvore_outfits/disjoint/
-  max_outfit_length: 19
+  max_outfit_length: 16
 training:
   learning_type: curriculum_main
   negative_sample_size: 10
