@@ -509,8 +509,9 @@ class ItemEmbeddingLoader(OutfitSetLoader):
         skipped_count = 0
         included_count = 0
         for each_fitb in raw_fitb_data:
-            a_outfit_id, a_item_idx = each_fitb['answers'][0].split('_')
-            a_img = self.full_outfit_set_data[a_outfit_id][a_item_idx]
+            q_outfit_id, _ = each_fitb['question'][0].split('_')
+            this_a_index = str(each_fitb['blank_position'])
+            a_img = self.full_outfit_set_data[q_outfit_id][this_a_index]
             a_finegrain = self.im2finegrain[a_img]
             a_item_type = self.im2category[a_img]
 
