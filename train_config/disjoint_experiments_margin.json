@@ -1,0 +1,12 @@
+{
+  "config_list": [
+    "train_config/disjoint_experiments/disjoint_m045.yaml",
+    "train_config/disjoint_experiments/disjoint_m060.yaml",
+    "train_config/disjoint_experiments/disjoint_m075.yaml",
+    "train_config/disjoint_experiments/disjoint_m090.yaml"
+  ],
+  "seed_list": [
+    [1, 1],
+    [9, 16]
+  ]
+}
