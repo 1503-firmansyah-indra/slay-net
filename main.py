@@ -161,6 +161,7 @@ def main(args: argparse.Namespace):
                 previous_phase_result = execute_train_contrastive(args, model, train_dataset, valid_dataset)
             else:
                 raise Exception("invalid value for 'this_phase_learning_type'")
+        logger.info(f"final phase result: {previous_phase_result}")
     else:
         raise Exception("Invalid argument for 'learning_type'")
 

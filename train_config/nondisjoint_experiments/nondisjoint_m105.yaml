@@ -1,0 +1,46 @@
+data:
+  polyvore_split: nondisjoint
+  item_metadata_path: ../data/polyvore_outfits/polyvore_item_metadata.json
+  fclip_embeddings_path: ../data/polyvore_outfits/images_fclip.npy
+  fclip_images_mapping_path: ../data/polyvore_outfits/images_name.txt
+  txt_embeddings_path: ../data/polyvore_outfits/text_sentence_bert_v1.npy
+  item_types_path: ../data/polyvore_outfits/nondisjoint/item_types.json
+  contrastive_learning_data_path: ../data/polyvore_outfits/nondisjoint/set_based_train_full.json
+  data_root_dir: ../data/polyvore_outfits/nondisjoint/
+  max_outfit_length: 19
+training:
+  learning_type: curriculum_main
+  negative_sample_size: 10
+  lr: 5e-5
+  curriculum_phase_1:
+    this_phase_learning_type: combined
+    this_phase_epochs: 20
+    finegrain_sampling: 0
+    weight_contrastive: 0.8
+    weight_comp: 0.2
+    contrastive_add_minimum: 0
+  curriculum_phase_2:
+    this_phase_learning_type: contrastive
+    this_phase_epochs: 50
+    finegrain_sampling: 1
+    weight_contrastive: 1
+    weight_comp: 0
+    contrastive_add_minimum: 1
+random_seed:
+  torch: 1
+  numpy: 1
+model:
+  dim_embed_img: 64
+  dim_embed_txt: 64
+  set_encoder_type: SABS
+  set_pooling_type: PSWE
+  csa_num_conditions: 5
+contrastive_loss:
+  loss_margin: 1.05
+  negative_aggregate: mean
+combined_loss:
+  weight_contrastive: 0.8
+  weight_comp: 0.2
+set_pooling:
+  set_hidden_dim: 256
+  set_reference_points_count: 19
