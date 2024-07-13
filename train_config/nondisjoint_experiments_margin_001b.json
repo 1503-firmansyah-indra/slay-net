@@ -1,0 +1,16 @@
+{
+  "config_list": [
+    "train_config/nondisjoint_experiments/nondisjoint_m120.yaml",
+    "train_config/nondisjoint_experiments/nondisjoint_m135.yaml",
+    "train_config/nondisjoint_experiments/nondisjoint_m150.yaml",
+    "train_config/nondisjoint_experiments/nondisjoint_m105.yaml",
+    "train_config/nondisjoint_experiments/nondisjoint_m090.yaml",
+    "train_config/nondisjoint_experiments/nondisjoint_m075.yaml",
+    "train_config/nondisjoint_experiments/nondisjoint_m060.yaml",
+    "train_config/nondisjoint_experiments/nondisjoint_m045.yaml"
+  ],
+  "seed_list": [
+    [1, 1],
+    [9, 16]
+  ]
+}
