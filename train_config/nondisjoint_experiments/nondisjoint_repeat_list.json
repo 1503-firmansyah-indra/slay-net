@@ -1,0 +1,12 @@
+{
+  "config_list": [
+    "train_config/nondisjoint_experiments/nondisjoint_m045.yaml",
+    "train_config/nondisjoint_experiments/nondisjoint_m105.yaml"
+  ],
+  "seed_list": [
+    [3, 15],
+    [21, 20],
+    [51, 9],
+    [324, 24]
+  ]
+}
