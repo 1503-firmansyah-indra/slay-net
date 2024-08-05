@@ -36,7 +36,7 @@ model:
   set_pooling_type: PSWE
   csa_num_conditions: 5
 contrastive_loss:
-  loss_margin: 0.3
+  loss_margin: 1.35
   negative_aggregate: mean
 combined_loss:
   weight_contrastive: 0.8

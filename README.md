@@ -1,8 +1,5 @@
 # Slay-Net : Sliced-Wasserstein Fashion Compatibility Network
 
-# Note
-This repo is still work-in-progress
-
 
 # Abstract
 In recent years, learning outfit compatibility patterns from human-generated fashion outfits has gained attention from both academia and industry due to its importance to the generation of recommendations on fashion e-Commerce platforms.
@@ -69,7 +66,44 @@ Experiments conducted on a real-world dataset shows that Slay-Net improves the p
     ```commandline
     python preprocess_rak.py
     ```
+   
+## Executing Training
 
-# Resource
-- The paper was written based on the master thesis of the same name. 
+- The training can be run by executing the following command:
+    ```commandline
+    python main.py --batch_size 512 --config_dir <path to config>
+    ```
+
+- To run the training on **disjoint** dataset, the following command can be used:
+    ```commandline
+    python main.py --batch_size 512 --config_dir train_config/disjoint_proposed_curriculum.yaml
+    ```
+
+- To run the training on **nondisjoint** dataset, the following command can be used:
+    ```commandline
+    python main.py --batch_size 512 --config_dir train_config/nondisjoint_proposed_curriculum.yaml
+    ```
+
+- Please note that the commands given above only train the model once using one set of random seeds. 
+The results on the paper are the average of 6 training runs with different sets of random seeds.
+    - One set of random seeds consists of the random seed for PyTorch and Numpy
+    - The sets of random seeds used in the experiments are `[1, 1], [9, 16], [3, 15], [21, 20], [51, 9], [324, 24]`
+
+## Executing Evaluation
+
+- Once the training is done, modify the file `model_checkpoints.json` accordingly by specifying the path of the best checkpoints. (Please check the log accordingly)
+- Afterwards, run the following commands:
+    ```commandline
+    python calculate_metrics.py
+    ```
+  
+    ```commandline
+    python calculate_metrics_rak.py
+    ```
+- The results can be found in the directory `logs/metrics_calculation`
+
+
+# Note
+- The paper was written based on the master thesis of the same name. After the master thesis report had been completed, further experiments and hyper-paremeter optimization were done. 
+Hence, some results reported on the paper are different from the ones reported in the master thesis report.
 The master thesis report is available for download [here](https://drive.google.com/uc?export=view&id=1ebi9lRB-oy2W5zTkF-MNlVpTy8g5Jf8E)
