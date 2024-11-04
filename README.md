@@ -11,6 +11,10 @@ Furthermore, the training of *Slay-Net* follows a curriculum learning framework 
 Among recent related works, *Slay-Net* is able to achieve the best performance in the Outfit CIR task, as measured by the Recall@top-k metric.
 Experiments conducted on a real-world dataset shows that Slay-Net improves the performance in Outfit CIR task by up to 27.16%.
 
+# Paper Submission
+The paper was accepted at the Strategic and Utility-aware REcommendations (SURE) Workshop at Recsys 2024 in Bari, Italy. 
+You can download the camera ready version of the paper [here](https://drive.google.com/uc?export=view&id=1_6RoXn3oPHVrsnRalD0KyKCvti3okw86).
+
 # Running the code
 ## Installing Required Libraries
 - Python version: 3.9.x
