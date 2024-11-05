@@ -13,7 +13,7 @@ Experiments conducted on a real-world dataset shows that Slay-Net improves the p
 
 # Paper Submission
 The paper was accepted at the Strategic and Utility-aware REcommendations (SURE) Workshop at Recsys 2024 in Bari, Italy. 
-You can download the camera ready version of the paper [here](https://drive.google.com/uc?export=view&id=1_6RoXn3oPHVrsnRalD0KyKCvti3okw86).
+You can download the camera ready version of the paper [view paper](https://1503-firmansyah-indra.github.io/works/camera_ready-firmansyah_learning-set-embeddings.pdf).
 
 # Running the code
 ## Installing Required Libraries
